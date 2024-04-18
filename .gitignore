@@ -3,3 +3,5 @@ pdblp.egg-info
 doc/_build/
 dist/
 venv/
+bloomberg_api_usage.json
+bloomberg_request_log.json
