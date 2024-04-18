@@ -129,16 +129,15 @@ class BCon(object):
             with open(self.request_log_file, "r") as file:
                 return json.load(file)
         except FileNotFoundError:
-            return []
+            return {}
 
     def log_request(self, rtype, tickers, flds):
-        new_request = {
-            dt.datetime.now().isoformat():[rtype, tickers, flds]
-        }
-        request_list = self.load_request_log()
-        request_list.append(new_request)
+
+        request_log_dict = self.load_request_log()
+        request_log_dict[dt.datetime.now().isoformat()] = [rtype, tickers, flds]
+
         with open(self.request_log_file, "w") as file:
-            json.dump(request_list, file, indent=4)
+            json.dump(request_log_dict, file, indent=4)
 
     def start(self):
         """
