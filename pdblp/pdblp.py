@@ -60,7 +60,7 @@ def bopen(**kwargs):
 
 class BCon(object):
     def __init__(self, host='localhost', port=8194, debug=False, timeout=500,
-                 session=None, identity=None):
+                 session=None, identity=None, logdir=None):
         """
         Create an object which manages connection to the Bloomberg API session
 
@@ -104,8 +104,10 @@ class BCon(object):
         # initialize logger
         self.debug = debug
 
-        module_dir = os.path.dirname(os.path.abspath(__file__))
-        self.request_log_file = os.path.join(module_dir, "bloomberg_request_log.json")
+        if logdir is None:
+            self.request_log_file = "D:/bloombergapi/bloomberg_request_log.json"
+        else:
+            self.request_log_file = os.path.join(logdir, "bloomberg_request_log.json")
 
     @property
     def debug(self):
