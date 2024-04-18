@@ -1,11 +1,14 @@
 import logging
 import contextlib
 import json
+import os
+import datetime as dt
 
 import blpapi
 import numpy as np
 import pandas as pd
 
+from .tracker import track_request
 
 _RESPONSE_TYPES = [blpapi.Event.RESPONSE, blpapi.Event.PARTIAL_RESPONSE]
 
@@ -97,11 +100,12 @@ class BCon(object):
         self.timeout = timeout
         self._session = session
         self._identity = identity
+
         # initialize logger
         self.debug = debug
 
-        self.api_usage_file = "bloomberg_api_usage.json"
-        self.api_usage = self.load_api_usage_from_json()
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        self.request_log_file = os.path.join(module_dir, "bloomberg_request_log.json")
 
     @property
     def debug(self):
@@ -118,20 +122,21 @@ class BCon(object):
         """
         self._debug = value
 
-    def load_api_usage_from_json(self):
+    def load_request_log(self):
         try:
-            with open(self.api_usage_file, "r") as file:
+            with open(self.request_log_file, "r") as file:
                 return json.load(file)
         except FileNotFoundError:
-            return {
-                "bdh_call_count":0,
-                "unique_tickers": set(),
-                "unique_fields": set()
-            }
+            return []
 
-    def save_api_usage_to_json(self):
-        with open(self.api_usage_file, "w") as file:
-            json.dump(self.api_usage, file)
+    def log_request(self, rtype, tickers, flds):
+        new_request = {
+            dt.datetime.now().isoformat():[rtype, tickers, flds]
+        }
+        request_list = self.load_request_log()
+        request_list.append(new_request)
+        with open(self.request_log_file, "w") as file:
+            json.dump(request_list, file, indent=4)
 
     def start(self):
         """
@@ -165,6 +170,7 @@ class BCon(object):
                     logger.warning('Message Received:\n{}'.format(msg))
                 raise ConnectionError('Could not start blpapi.Session')
         self._init_services()
+
         return self
 
     def _init_services(self):
@@ -204,6 +210,7 @@ class BCon(object):
 
         return self
 
+    @track_request
     def _create_req(self, rtype, tickers, flds, ovrds, setvals):
         # flush event queue in case previous call errored out
         while(self._session.tryNextEvent()):
@@ -300,10 +307,6 @@ class BCon(object):
             df = df.set_index(['date'] + cols).unstack(cols)
             df.columns = df.columns.droplevel(0)
 
-        self.api_usage["initiated_count"] += 1
-        self.api_usage["unique_tickers"].update(set(tickers))
-        self.api_usage["unique_fields"].update(set(flds))
-
         return df
 
     def _bdh_list(self, tickers, flds, start_date, end_date, elms,
@@ -320,6 +323,7 @@ class BCon(object):
 
         request = self._create_req('HistoricalDataRequest', tickers, flds,
                                    ovrds, setvals)
+
         logger.info('Sending Request:\n{}'.format(request))
         # Send the request
         self._session.sendRequest(request, identity=self._identity)
