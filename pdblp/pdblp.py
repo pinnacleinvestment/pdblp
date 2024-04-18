@@ -1,5 +1,6 @@
 import logging
 import contextlib
+import json
 
 import blpapi
 import numpy as np
@@ -99,6 +100,9 @@ class BCon(object):
         # initialize logger
         self.debug = debug
 
+        self.api_usage_file = "bloomberg_api_usage.json"
+        self.api_usage = self.load_api_usage_from_json()
+
     @property
     def debug(self):
         """
@@ -113,6 +117,21 @@ class BCon(object):
         Set whether logging is True or False
         """
         self._debug = value
+
+    def load_api_usage_from_json(self):
+        try:
+            with open(self.api_usage_file, "r") as file:
+                return json.load(file)
+        except FileNotFoundError:
+            return {
+                "bdh_call_count":0,
+                "unique_tickers": set(),
+                "unique_fields": set()
+            }
+
+    def save_api_usage_to_json(self):
+        with open(self.api_usage_file, "w") as file:
+            json.dump(self.api_usage, file)
 
     def start(self):
         """
@@ -280,6 +299,10 @@ class BCon(object):
             cols = ['ticker', 'field']
             df = df.set_index(['date'] + cols).unstack(cols)
             df.columns = df.columns.droplevel(0)
+
+        self.api_usage["initiated_count"] += 1
+        self.api_usage["unique_tickers"].update(set(tickers))
+        self.api_usage["unique_fields"].update(set(flds))
 
         return df
 
