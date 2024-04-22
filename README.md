@@ -14,12 +14,16 @@ data and reference data. A simple set of examples is available
 The library borrows heavily from a similar package available
 [here](https://github.com/kyuni22/pybbg)
 
+## Pinnacle's Fork
+
+We add usage logging to monitor blpapi usage to prevent hitting daily or monthly limit.
+
 ## Questions
 
 `pdblp` simply wraps `blpapi` responses into `pandas` dataframes, general
 questions about `blpapi` **should not** be posted as issues. The best way to get
 support for `blpapi` is either from Bloomberg directly via the terminal or on
-Stack Overflow, using tag `blpapi` (and `pdblp` if it also relates to the `pdblp` 
+Stack Overflow, using tag `blpapi` (and `pdblp` if it also relates to the `pdblp`
 library).
 
 ## Requires
@@ -35,21 +39,28 @@ and for `pdblp.parser`
 [pyparsing](https://pythonhosted.org/pyparsing/) >= 2.2.0
 
 ## Installation
-You can install from PyPi using
 
+### Pinnacle's fork
+
+```bash
+pip install git+https://github.com/pinnacleinvestment/pdblp.git
 ```
+
+### Pypi
+
+```bash
 pip install pdblp
 ```
 
 or from conda-forge using
 
-```
+```bash
 conda install -c conda-forge pdblp
 ```
 
 or you can clone this repository and pip install the package, i.e.
 
-```
+```bash
 git clone https://github.com/matthewgilbert/pdblp.git
 pip install -e pdblp
 ```
