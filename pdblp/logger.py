@@ -12,7 +12,7 @@ def _extract_element_content(element_string):
 
     return results
 
-def track_request(func):
+def log(func):
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         request = func(self, *args, **kwargs)
