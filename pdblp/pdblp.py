@@ -2,6 +2,7 @@ import logging
 import contextlib
 import json
 import os
+import sqlite3
 import datetime as dt
 
 import blpapi
@@ -21,7 +22,7 @@ _EVENT_DICT = {
               blpapi.Event.TIMEOUT: 'TIMEOUT',
               blpapi.Event.REQUEST: 'REQUEST'
 }
-
+_LOG_DB_PATH = "blpapilog.db"
 
 def _get_logger(debug):
     logger = logging.getLogger(__name__)
@@ -105,9 +106,10 @@ class BCon(object):
         self.debug = debug
 
         if logdir is None:
-            self.request_log_file = "D:/bloombergapi/bloomberg_request_log.json"
+            self.log_db_path = os.path.join("D:/bloombergapi", _LOG_DB_PATH)
         else:
-            self.request_log_file = os.path.join(logdir, "bloomberg_request_log.json")
+            self.log_db_path = os.path.join(logdir, _LOG_DB_PATH)
+        self.__initialize_db()
 
     @property
     def debug(self):
@@ -124,6 +126,29 @@ class BCon(object):
         """
         self._debug = value
 
+    def __initialize_db(self):
+        conn = sqlite3.connect(self.log_db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+
+        tables = cursor.fetchall()
+        tables = [table[0] for table in tables]
+        if not 'blpapilog' in tables:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS blpapilog (
+                    id INTEGER PRIMARY KEY,
+                    timestamp TIMESTAMP,
+                    request_type TEXT,
+                    tickers TEXT,
+                    fields TEXT
+                )
+            ''')
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+
     def load_request_log(self):
         try:
             with open(self.request_log_file, "r") as file:
@@ -131,13 +156,20 @@ class BCon(object):
         except FileNotFoundError:
             return {}
 
-    def log_request(self, rtype, tickers, flds):
+    def log_request(self, rtype, tickers, fields):
+        conn = sqlite3.connect(self.log_db_path)
+        cursor = conn.cursor()
+        tickers_str = ",".join(tickers)
+        fields_str = ",".join(fields)
 
-        request_log_dict = self.load_request_log()
-        request_log_dict[dt.datetime.now().isoformat()] = [rtype, tickers, flds]
+        cursor.execute('''
+            INSERT INTO blpapilog (timestamp, request_type, tickers, fields) VALUES (?, ?, ?, ?)
+        ''', (dt.datetime.now(), rtype, tickers_str, fields_str)
+        )
 
-        with open(self.request_log_file, "w") as file:
-            json.dump(request_log_dict, file, indent=4)
+        conn.commit()
+        cursor.close()
+        conn.close()
 
     def start(self):
         """
