@@ -9,7 +9,7 @@ import blpapi
 import numpy as np
 import pandas as pd
 
-from .tracker import track_request
+from pdblp.logger import log
 
 _RESPONSE_TYPES = [blpapi.Event.RESPONSE, blpapi.Event.PARTIAL_RESPONSE]
 
@@ -22,6 +22,7 @@ _EVENT_DICT = {
               blpapi.Event.TIMEOUT: 'TIMEOUT',
               blpapi.Event.REQUEST: 'REQUEST'
 }
+
 _LOG_DB_PATH = "blpapilog.db"
 
 def _get_logger(debug):
@@ -148,14 +149,6 @@ class BCon(object):
         cursor.close()
         conn.close()
 
-
-    def load_request_log(self):
-        try:
-            with open(self.request_log_file, "r") as file:
-                return json.load(file)
-        except FileNotFoundError:
-            return {}
-
     def log_request(self, rtype, tickers, fields):
         conn = sqlite3.connect(self.log_db_path)
         cursor = conn.cursor()
@@ -243,7 +236,7 @@ class BCon(object):
 
         return self
 
-    @track_request
+    @log
     def _create_req(self, rtype, tickers, flds, ovrds, setvals):
         # flush event queue in case previous call errored out
         while(self._session.tryNextEvent()):
