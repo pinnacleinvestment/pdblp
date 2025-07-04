@@ -4,12 +4,14 @@ import json
 import os
 import sqlite3
 import datetime as dt
+import random
 
 import blpapi
 import numpy as np
 import pandas as pd
 
 from pdblp.logger import log
+from pdblp.field_types import FIELD_TYPES, BULKREF_FIELD_NAME_TYPES
 
 _RESPONSE_TYPES = [blpapi.Event.RESPONSE, blpapi.Event.PARTIAL_RESPONSE]
 
@@ -62,7 +64,7 @@ def bopen(**kwargs):
 
 class BCon(object):
     def __init__(self, host='localhost', port=8194, debug=False, timeout=500,
-                 session=None, identity=None, logdir=None):
+                 session=None, identity=None, logdir=None, dummy=False):
         """
         Create an object which manages connection to the Bloomberg API session
 
@@ -86,7 +88,11 @@ class BCon(object):
             Identity to use for request authentication. This should only be
             passed with an appropriate session and should already by
             authenticated. This is only relevant for SAPI and B-Pipe.
+        dummy: Boolean {True, False}
+            If True, methods will return dummy data instead of querying Bloomberg.
         """
+
+        self.dummy = dummy
 
         if session is None:
             sessionOptions = blpapi.SessionOptions()
@@ -168,6 +174,8 @@ class BCon(object):
         """
         Start connection and initialize session services
         """
+        if self.dummy:
+            return self
 
         # flush event queue in defensive way
         logger = _get_logger(self.debug)
@@ -318,6 +326,31 @@ class BCon(object):
         longdata: boolean
             Whether data should be returned in long data format or pivoted
         """
+        if self.dummy:
+            dates = pd.date_range(start=start_date, end=end_date)
+            tickers_ = [tickers] if isinstance(tickers, str) else tickers
+            flds_ = [flds] if isinstance(flds, str) else flds
+            data = []
+            for date in dates:
+                for ticker in tickers_:
+                    for fld in flds_:
+                        dtype = FIELD_TYPES.get(fld, 'str')
+                        if dtype == 'float':
+                            value = round(random.uniform(1, 10000), 6)
+                        elif dtype == 'int':
+                            value = random.randint(1, 10000)
+                        elif dtype == 'date':
+                            value = date.strftime('%Y-%m-%d')
+                        else:
+                            value = f"dummy_{fld}"
+                        data.append((date, ticker, fld, value))
+            df = pd.DataFrame(data, columns=['date', 'ticker', 'field', 'value'])
+            if not longdata:
+                cols = ['ticker', 'field']
+                df = df.set_index(['date'] + cols).unstack(cols)
+                df.columns = df.columns.droplevel(0)
+            return df
+
         ovrds = [] if not ovrds else ovrds
         elms = [] if not elms else elms
 
@@ -403,8 +436,26 @@ class BCon(object):
                 FUT_GEN_MONTH = "FGHJKMNQUVXZ"
         }
         """
-        ovrds = [] if not ovrds else ovrds
+        if self.dummy:
+            tickers_ = [tickers] if isinstance(tickers, str) else tickers
+            flds_ = [flds] if isinstance(flds, str) else flds
+            data = []
+            for ticker in tickers_:
+                for fld in flds_:
+                    dtype = FIELD_TYPES.get(fld, 'str')
+                    if dtype == 'float':
+                        value = round(random.uniform(1, 10000), 6)
+                    elif dtype == 'int':
+                        value = random.randint(1, 10000)
+                    elif dtype == 'date':
+                        value = '2000-01-01'
+                    else:
+                        value = f"dummy_{fld}"
+                    data.append([ticker, fld, value])
+            df = pd.DataFrame(data, columns=['ticker', 'field', 'value'])
+            return df
 
+        ovrds = [] if not ovrds else ovrds
         logger = _get_logger(self.debug)
         if type(tickers) is not list:
             tickers = [tickers]
@@ -504,8 +555,31 @@ class BCon(object):
             }
         }
         """
-        ovrds = [] if not ovrds else ovrds
+        if self.dummy:
+            tickers_ = [tickers] if isinstance(tickers, str) else tickers
+            flds_ = [flds] if isinstance(flds, str) else flds
+            data = []
+            for ticker in tickers_:
+                for fld in flds_:
+                    name_types = BULKREF_FIELD_NAME_TYPES.get(fld, {})
+                    if not name_types:
+                        for i in range(2):
+                            data.append([ticker, fld, f'name{i}', f'dummy_{fld}_name{i}', i])
+                    else:
+                        for i, (name, dtype) in enumerate(name_types.items()):
+                            if dtype == 'float':
+                                value = round(random.uniform(1, 10000), 6)
+                            elif dtype == 'int':
+                                value = random.randint(1, 10000)
+                            elif dtype == 'date':
+                                value = '2000-01-01'
+                            else:
+                                value = f"dummy_{name}"
+                            data.append([ticker, fld, name, value, i])
+            df = pd.DataFrame(data, columns=['ticker', 'field', 'name', 'value', 'position'])
+            return df
 
+        ovrds = [] if not ovrds else ovrds
         logger = _get_logger(self.debug)
         if type(tickers) is not list:
             tickers = [tickers]
@@ -644,6 +718,34 @@ class BCon(object):
         ...                  date_field="CURVE_DATE")
 
         """
+        if self.dummy:
+            tickers_ = [tickers] if isinstance(tickers, str) else tickers
+            flds_ = [flds] if isinstance(flds, str) else flds
+            data = []
+            for date in dates:
+                for ticker in tickers_:
+                    for fld in flds_:
+                        name_types = BULKREF_FIELD_NAME_TYPES.get(fld, {})
+                        if not name_types:
+                            for i in range(2):
+                                data.append([ticker, fld, f'name{i}', f'dummy_{fld}_name{i}', i, date])
+                        else:
+                            for i, (name, dtype) in enumerate(name_types.items()):
+                                if dtype == 'float':
+                                    value = round(random.uniform(1, 10000), 6)
+                                elif dtype == 'int':
+                                    value = random.randint(1, 10000)
+                                elif dtype == 'date':
+                                    value = '2000-01-01'
+                                else:
+                                    value = f"dummy_{name}"
+                                data.append([ticker, fld, name, value, i, date])
+            df = pd.DataFrame(data, columns=['ticker', 'field', 'name', 'value', 'position', 'date'])
+            df = df.sort_values(by=['date', 'position']).reset_index(drop=True)
+            df = df.loc[:, ['date', 'ticker', 'field', 'name',
+                            'value', 'position']]
+            return df
+
         ovrds = [] if not ovrds else ovrds
 
         if type(tickers) is not list:
