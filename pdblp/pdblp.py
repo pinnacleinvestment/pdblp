@@ -140,14 +140,22 @@ class BCon(object):
 
         tables = cursor.fetchall()
         tables = [table[0] for table in tables]
-        if not 'blpapilog' in tables:
+        if 'requestlog' not in tables:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS requestlog (
+                    id INTEGER PRIMARY KEY,
+                    timestamp TIMESTAMP,
+                    request_type TEXT
+                )
+            ''')
+        if 'blpapilog' not in tables:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS blpapilog (
                     id INTEGER PRIMARY KEY,
-                    timestamp TIMESTAMP,
-                    request_type TEXT,
-                    tickers TEXT,
-                    fields TEXT
+                    request_id INTEGER,
+                    ticker TEXT,
+                    field TEXT,
+                    FOREIGN KEY(request_id) REFERENCES requestlog(id)
                 )
             ''')
 
@@ -158,14 +166,17 @@ class BCon(object):
     def log_request(self, rtype, tickers, fields):
         conn = sqlite3.connect(self.log_db_path)
         cursor = conn.cursor()
-        tickers_str = ",".join(tickers)
-        fields_str = ",".join(fields)
-
+        # Insert into requestlog and get the request id
         cursor.execute('''
-            INSERT INTO blpapilog (timestamp, request_type, tickers, fields) VALUES (?, ?, ?, ?)
-        ''', (dt.datetime.now(), rtype, tickers_str, fields_str)
-        )
-
+            INSERT INTO requestlog (timestamp, request_type) VALUES (?, ?)
+        ''', (dt.datetime.now(), rtype))
+        request_id = cursor.lastrowid
+        # Insert each (ticker, field) pair with the request_id
+        for ticker in tickers:
+            for field in fields:
+                cursor.execute('''
+                    INSERT INTO blpapilog (request_id, ticker, field) VALUES (?, ?, ?)
+                ''', (request_id, ticker, field))
         conn.commit()
         cursor.close()
         conn.close()
