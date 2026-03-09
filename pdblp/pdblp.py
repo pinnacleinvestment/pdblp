@@ -64,7 +64,7 @@ def bopen(**kwargs):
 
 class BCon(object):
     def __init__(self, host='localhost', port=8194, debug=False, timeout=500,
-                 session=None, identity=None, logdir=None, dummy=False):
+                 session=None, identity=None, logdir=".", dummy=False):
         """
         Create an object which manages connection to the Bloomberg API session
 
@@ -88,8 +88,13 @@ class BCon(object):
             Identity to use for request authentication. This should only be
             passed with an appropriate session and should already by
             authenticated. This is only relevant for SAPI and B-Pipe.
+        logdir: str
+            Directory to store the SQLite log database. Defaults to the
+            current working directory. Do not use the dummy=True mode in
+            production environments.
         dummy: Boolean {True, False}
-            If True, methods will return dummy data instead of querying Bloomberg.
+            If True, methods will return dummy data instead of querying
+            Bloomberg. FOR TESTING PURPOSE ONLY - do not use in production.
         """
 
         self.dummy = dummy
@@ -111,11 +116,7 @@ class BCon(object):
 
         # initialize logger
         self.debug = debug
-
-        if logdir is None:
-            self.log_db_path = os.path.join("D:/bloombergapi", _LOG_DB_PATH)
-        else:
-            self.log_db_path = os.path.join(logdir, _LOG_DB_PATH)
+        self.log_db_path = os.path.join(logdir, _LOG_DB_PATH)
         self.__initialize_db()
 
     @property
@@ -134,52 +135,48 @@ class BCon(object):
         self._debug = value
 
     def __initialize_db(self):
-        conn = sqlite3.connect(self.log_db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        with sqlite3.connect(self.log_db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
 
-        tables = cursor.fetchall()
-        tables = [table[0] for table in tables]
-        if 'requestlog' not in tables:
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS requestlog (
-                    id INTEGER PRIMARY KEY,
-                    timestamp TIMESTAMP,
-                    request_type TEXT
-                )
-            ''')
-        if 'blpapilog' not in tables:
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS blpapilog (
-                    id INTEGER PRIMARY KEY,
-                    request_id INTEGER,
-                    ticker TEXT,
-                    field TEXT,
-                    FOREIGN KEY(request_id) REFERENCES requestlog(id)
-                )
-            ''')
-
-        conn.commit()
-        cursor.close()
-        conn.close()
+            tables = cursor.fetchall()
+            tables = [table[0] for table in tables]
+            if 'requestlog' not in tables:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS requestlog (
+                        id INTEGER PRIMARY KEY,
+                        timestamp TIMESTAMP,
+                        request_type TEXT
+                    )
+                """)
+            if 'blpapilog' not in tables:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS blpapilog (
+                        id INTEGER PRIMARY KEY,
+                        request_id INTEGER,
+                        ticker TEXT,
+                        field TEXT,
+                        FOREIGN KEY(request_id) REFERENCES requestlog(id)
+                    )
+                """)
+            conn.commit()
 
     def log_request(self, rtype, tickers, fields):
-        conn = sqlite3.connect(self.log_db_path)
-        cursor = conn.cursor()
-        # Insert into requestlog and get the request id
-        cursor.execute('''
-            INSERT INTO requestlog (timestamp, request_type) VALUES (?, ?)
-        ''', (dt.datetime.now(), rtype))
-        request_id = cursor.lastrowid
-        # Insert each (ticker, field) pair with the request_id
-        for ticker in tickers:
-            for field in fields:
-                cursor.execute('''
-                    INSERT INTO blpapilog (request_id, ticker, field) VALUES (?, ?, ?)
-                ''', (request_id, ticker, field))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with sqlite3.connect(self.log_db_path) as conn:
+            cursor = conn.cursor()
+            # Insert into requestlog and get the request id
+            cursor.execute('''
+                INSERT INTO requestlog (timestamp, request_type) VALUES (?, ?)
+            ''', (dt.datetime.now(), rtype))
+            request_id = cursor.lastrowid
+
+            # Insert each (ticker, field) pair with the request_id
+            for ticker in tickers:
+                for field in fields:
+                    cursor.execute('''
+                        INSERT INTO blpapilog (request_id, ticker, field) VALUES (?, ?, ?)
+                    ''', (request_id, ticker, field))
+            conn.commit()
 
     def start(self):
         """
@@ -783,12 +780,12 @@ class BCon(object):
         if len(dates) == 0:
             raise ValueError('dates must by non empty')
         ovrd = overrides.appendElement()
-        for dt in dates:
+        for date_str in dates:
             ovrd.setElement('fieldId', date_field)
-            ovrd.setElement('value', dt)
+            ovrd.setElement('value', date_str)
             # CorrelationID used to keep track of which response coincides with
             # which request
-            cid = blpapi.CorrelationId(dt)
+            cid = blpapi.CorrelationId(date_str)
             logger.info('Sending Request:\n{}'.format(request))
             self._session.sendRequest(request, identity=self._identity,
                                       correlationId=cid)
