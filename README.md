@@ -18,6 +18,18 @@ The library borrows heavily from a similar package available
 
 We add usage logging to monitor blpapi usage to prevent hitting daily or monthly limit.
 
+### Changes from upstream
+
+#### v0.1.8+pinnaclefork.3
+- Fixed hard-coded `D:/bloombergapi` log path; `logdir` now defaults to current working directory
+- Fixed SQLite connection leaks in `__initialize_db` and `log_request` using context managers
+- Fixed `dt` loop variable in `_send_hist` shadowing top-level `datetime` import
+- `dummy=True` mode is now explicitly documented as for testing only
+
+#### v0.1.8+pinnaclefork.2
+- Added `dummy=True` mode for testing without a Bloomberg connection
+- Added SQLite request logging via `log_request`
+
 ## Questions
 
 `pdblp` simply wraps `blpapi` responses into `pandas` dataframes, general
