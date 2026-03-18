@@ -20,6 +20,22 @@ We add usage logging to monitor blpapi usage to prevent hitting daily or monthly
 
 ### Changes from upstream
 
+#### v0.1.8+pinnaclefork.4
+- Enhanced dummy data generation to better mimic real Bloomberg responses:
+  - Added realistic equity ticker generator (Excel-style: A, B, ..., AA, AB, ...)
+  - Added valid-format ISIN generator
+- Introduced `FIELD_DUMMY_VALUES` for field-specific overrides (e.g., `ID_ISIN`)
+- Expanded supported fields:
+  - `PX_HIGH`, `PX_LOW`, `PX_VOLUME`, `PX_BID`, `PX_ASK`
+- Refactored dummy logic:
+  - Centralized scalar generation via `_dummy_scalar_value`
+  - Centralized bulkref generation via `_dummy_bulkref_rows`
+- Improved `bulkref()` structure:
+  - Correct position-based grouping (matching Bloomberg behavior)
+  - Configurable number of members via `BULKREF_DUMMY_NUM_MEMBERS`
+- Removed duplicated dummy-generation logic across `ref`, `bdh`, and `bulkref`
+- Improved consistency, maintainability, and realism of test data
+
 #### v0.1.8+pinnaclefork.3
 - Fixed hard-coded `D:/bloombergapi` log path; `logdir` now defaults to current working directory
 - Fixed SQLite connection leaks in `__initialize_db` and `log_request` using context managers
