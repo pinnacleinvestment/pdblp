@@ -11,7 +11,12 @@ import numpy as np
 import pandas as pd
 
 from pdblp.logger import log
-from pdblp.field_types import FIELD_TYPES, BULKREF_FIELD_NAME_TYPES
+from pdblp.field_types import (
+    FIELD_TYPES,
+    BULKREF_FIELD_NAME_TYPES,
+    FIELD_DUMMY_VALUES,
+    BULKREF_DUMMY_NUM_MEMBERS
+)
 
 _RESPONSE_TYPES = [blpapi.Event.RESPONSE, blpapi.Event.PARTIAL_RESPONSE]
 
@@ -42,6 +47,62 @@ def _get_logger(debug):
         logger.setLevel(debug_level)
 
     return logger
+
+def _dummy_scalar_value(fld, ticker, i):
+    """
+    Generate a dummy scalar value for ref()/bdh() fields.
+    Checks FIELD_DUMMY_VALUES first for format-specific overrides,
+    then falls back to FIELD_TYPES for generic type generation.
+    """
+    dummy_fn = FIELD_DUMMY_VALUES.get(fld)
+    if dummy_fn is not None:
+        return dummy_fn(ticker, i)
+
+    dtype = FIELD_TYPES.get(fld, 'str')
+    if dtype == 'float':
+        return round(random.uniform(1, 10000), 6)
+    elif dtype == 'int':
+        return random.randint(1, 10000)
+    elif dtype == 'date':
+        return '2000-01-01'
+    else:
+        return f"dummy_{fld}"
+
+def _dummy_bulkref_rows(ticker, fld):
+    """
+    Generate dummy bulkref rows for a single (ticker, fld) pair.
+    Returns list of [ticker, fld, name, value, position].
+
+    Each position = one member row. All field names for that member
+    are nested inside the same position, matching real Bloomberg structure:
+
+        position 0 → Index Member: A US EQUITY, Number of Shares: 1234
+        position 1 → Index Member: B US EQUITY, Number of Shares: 5678
+        ...
+    """
+    data = []
+    name_types = BULKREF_FIELD_NAME_TYPES.get(fld)
+
+    if not name_types:
+        # Unknown field — return generic dummy rows
+        for pos in range(BULKREF_DUMMY_NUM_MEMBERS):
+            for j in range(2):
+                data.append([ticker, fld, f'name{j}', f'dummy_{fld}_{pos}_{j}', pos])
+        return data
+
+    for pos in range(BULKREF_DUMMY_NUM_MEMBERS):
+        for name, (dtype, dummy_fn) in name_types.items():
+            if dtype == 'float':
+                value = round(random.uniform(1, 10000), 6)
+            elif dtype == 'int':
+                value = random.randint(1, 10000)
+            elif dtype == 'date':
+                value = '2000-01-01'
+            else:
+                value = dummy_fn(pos)  # pos is unique per member — no duplicates
+            data.append([ticker, fld, name, value, pos])
+
+    return data
 
 
 @contextlib.contextmanager
@@ -339,18 +400,10 @@ class BCon(object):
             tickers_ = [tickers] if isinstance(tickers, str) else tickers
             flds_ = [flds] if isinstance(flds, str) else flds
             data = []
-            for date in dates:
-                for ticker in tickers_:
-                    for fld in flds_:
-                        dtype = FIELD_TYPES.get(fld, 'str')
-                        if dtype == 'float':
-                            value = round(random.uniform(1, 10000), 6)
-                        elif dtype == 'int':
-                            value = random.randint(1, 10000)
-                        elif dtype == 'date':
-                            value = date.strftime('%Y-%m-%d')
-                        else:
-                            value = f"dummy_{fld}"
+            for fld in flds_:
+                for i, ticker in enumerate(tickers_):
+                    for date in dates:
+                        value = _dummy_scalar_value(fld, ticker, i)
                         data.append((date, ticker, fld, value))
             df = pd.DataFrame(data, columns=['date', 'ticker', 'field', 'value'])
             if not longdata:
@@ -448,17 +501,9 @@ class BCon(object):
             tickers_ = [tickers] if isinstance(tickers, str) else tickers
             flds_ = [flds] if isinstance(flds, str) else flds
             data = []
-            for ticker in tickers_:
-                for fld in flds_:
-                    dtype = FIELD_TYPES.get(fld, 'str')
-                    if dtype == 'float':
-                        value = round(random.uniform(1, 10000), 6)
-                    elif dtype == 'int':
-                        value = random.randint(1, 10000)
-                    elif dtype == 'date':
-                        value = '2000-01-01'
-                    else:
-                        value = f"dummy_{fld}"
+            for fld in flds_:
+                for i, ticker in enumerate(tickers_):
+                    value = _dummy_scalar_value(fld, ticker, i)
                     data.append([ticker, fld, value])
             df = pd.DataFrame(data, columns=['ticker', 'field', 'value'])
             return df
@@ -569,21 +614,7 @@ class BCon(object):
             data = []
             for ticker in tickers_:
                 for fld in flds_:
-                    name_types = BULKREF_FIELD_NAME_TYPES.get(fld, {})
-                    if not name_types:
-                        for i in range(2):
-                            data.append([ticker, fld, f'name{i}', f'dummy_{fld}_name{i}', i])
-                    else:
-                        for i, (name, dtype) in enumerate(name_types.items()):
-                            if dtype == 'float':
-                                value = round(random.uniform(1, 10000), 6)
-                            elif dtype == 'int':
-                                value = random.randint(1, 10000)
-                            elif dtype == 'date':
-                                value = '2000-01-01'
-                            else:
-                                value = f"dummy_{name}"
-                            data.append([ticker, fld, name, value, i])
+                    data.extend(_dummy_bulkref_rows(ticker, fld))
             df = pd.DataFrame(data, columns=['ticker', 'field', 'name', 'value', 'position'])
             return df
 
@@ -733,25 +764,11 @@ class BCon(object):
             for date in dates:
                 for ticker in tickers_:
                     for fld in flds_:
-                        name_types = BULKREF_FIELD_NAME_TYPES.get(fld, {})
-                        if not name_types:
-                            for i in range(2):
-                                data.append([ticker, fld, f'name{i}', f'dummy_{fld}_name{i}', i, date])
-                        else:
-                            for i, (name, dtype) in enumerate(name_types.items()):
-                                if dtype == 'float':
-                                    value = round(random.uniform(1, 10000), 6)
-                                elif dtype == 'int':
-                                    value = random.randint(1, 10000)
-                                elif dtype == 'date':
-                                    value = '2000-01-01'
-                                else:
-                                    value = f"dummy_{name}"
-                                data.append([ticker, fld, name, value, i, date])
+                        for row in _dummy_bulkref_rows(ticker, fld):
+                            data.append(row + [date])
             df = pd.DataFrame(data, columns=['ticker', 'field', 'name', 'value', 'position', 'date'])
             df = df.sort_values(by=['date', 'position']).reset_index(drop=True)
-            df = df.loc[:, ['date', 'ticker', 'field', 'name',
-                            'value', 'position']]
+            df = df.loc[:, ['date', 'ticker', 'field', 'name', 'value', 'position']]
             return df
 
         ovrds = [] if not ovrds else ovrds
