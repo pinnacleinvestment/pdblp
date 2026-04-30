@@ -20,6 +20,12 @@ We add usage logging to monitor blpapi usage to prevent hitting daily or monthly
 
 ### Changes from upstream
 
+#### v0.1.8+pinnaclefork.5
+- Improved dummy data realism and time series handling:
+  - Added support for fundamental fields (SALES_REV_TURN, GROSS_PROFIT, EBIT, EBITDA)
+  - Introduced FIELD_FREQUENCIES to control field-specific data frequency (e.g. quarterly 'QE')
+  - Updated dummy generator to respect per-field frequency instead of defaulting to daily
+
 #### v0.1.8+pinnaclefork.4
 - Enhanced dummy data generation to better mimic real Bloomberg responses:
   - Added realistic equity ticker generator (Excel-style: A, B, ..., AA, AB, ...)
