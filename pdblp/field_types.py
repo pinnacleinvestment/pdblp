@@ -38,10 +38,25 @@ FIELD_TYPES = {
     'TURNOVER':           'float',
     'PX_BID':             'float',
     'PX_ASK':             'float',
+    'SALES_REV_TURN':     'float',
     'NET_INCOME':         'float',
+    'GROSS_PROFIT':       'float',
+    'EBIT':               'float',
+    'EBITDA':             'float',
     'EQY_INIT_PO_DT':     'date',
     'EQY_INIT_PO_SH_PX':  'float',
     'ID_ISIN':            'str',
+    # Add more fields as needed
+}
+
+# Fields not listed here default to daily ('D')
+# Use pandas offset aliases: 'QE' = quarter-end, 'ME' = month-end, etc.
+FIELD_FREQUENCIES = {
+    'SALES_REV_TURN': 'QE',
+    'NET_INCOME':     'QE',
+    'GROSS_PROFIT':   'QE',
+    'EBIT':           'QE',
+    'EBITDA':         'QE',
     # Add more fields as needed
 }
 

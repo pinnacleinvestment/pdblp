@@ -13,6 +13,7 @@ import pandas as pd
 from pdblp.logger import log
 from pdblp.field_types import (
     FIELD_TYPES,
+    FIELD_FREQUENCIES,
     BULKREF_FIELD_NAME_TYPES,
     FIELD_DUMMY_VALUES,
     BULKREF_DUMMY_NUM_MEMBERS
@@ -396,11 +397,12 @@ class BCon(object):
             Whether data should be returned in long data format or pivoted
         """
         if self.dummy:
-            dates = pd.date_range(start=start_date, end=end_date)
             tickers_ = [tickers] if isinstance(tickers, str) else tickers
             flds_ = [flds] if isinstance(flds, str) else flds
             data = []
             for fld in flds_:
+                freq = FIELD_FREQUENCIES.get(fld, 'D')
+                dates = pd.date_range(start=start_date, end=end_date, freq=freq)
                 for i, ticker in enumerate(tickers_):
                     for date in dates:
                         value = _dummy_scalar_value(fld, ticker, i)
