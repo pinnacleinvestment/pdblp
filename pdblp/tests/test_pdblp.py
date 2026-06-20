@@ -85,8 +85,7 @@ def pivot_and_assert(df, df_exp, with_date=False):
     assert_frame_equal(df, df_exp)
 
 
-ifbbg = pytest.mark.skipif(pytest.config.cache.get('offline', False),
-                           reason="No BBG connection, skipping tests")
+ifbbg = pytest.mark.ifbbg
 
 
 @ifbbg
@@ -135,7 +134,7 @@ def test_bdh_partially_empty_data(con):
             longdata=False
     )
     df_exp = pd.DataFrame(
-        [[6.04, 172.99], [np.NaN, 172.43]],
+        [[6.04, 172.99], [np.nan, 172.43]],
         index=pd.DatetimeIndex(["20180215", "20180216"], name="date"),
         columns=pd.MultiIndex.from_product(
                     [["XIV US Equity", "AAPL US Equity"], ["PX_LAST"]],
@@ -272,14 +271,14 @@ def test_ref_not_applicable_field(con):
     # https://github.com/matthewgilbert/pdblp/issues/6
     df = con.ref("BCOM Index", ["INDX_GWEIGHT"])
     df_expect = pd.DataFrame(
-        [["BCOM Index", "INDX_GWEIGHT", np.NaN]],
+        [["BCOM Index", "INDX_GWEIGHT", np.nan]],
         columns=['ticker', 'field', 'value']
     )
     assert_frame_equal(df, df_expect)
 
     df = con.ref("BCOM Index", ["INDX_MWEIGHT_PX2"])
     df_expect = pd.DataFrame(
-        [["BCOM Index", "INDX_MWEIGHT_PX2", np.NaN]],
+        [["BCOM Index", "INDX_MWEIGHT_PX2", np.nan]],
         columns=['ticker', 'field', 'value']
     )
     assert_frame_equal(df, df_expect)
@@ -295,7 +294,7 @@ def test_ref_invalid_security(con):
 def test_ref_applicable_with_not_applicable_field(con):
     df = con.ref("BVIS0587 Index", ["MATURITY", "NAME"])
     df_exp = pd.DataFrame(
-        [["BVIS0587 Index", "MATURITY", np.NaN],
+        [["BVIS0587 Index", "MATURITY", np.nan],
          ["BVIS0587 Index", "NAME", "CAD Canada Govt BVAL Curve"]],
         columns=["ticker", "field", "value"])
     assert_frame_equal(df, df_exp)
@@ -348,7 +347,7 @@ def test_bulkref_null_scalar_sub_element(con):
 def test_bulkref_empty_field(con):
     df = con.bulkref(["88428LAA0 Corp"], ["INDEX_LIST"])
     df_exp = pd.DataFrame(
-        [["88428LAA0 Corp", "INDEX_LIST", np.NaN, np.NaN, np.NaN]],
+        [["88428LAA0 Corp", "INDEX_LIST", np.nan, np.nan, np.nan]],
         columns=["ticker", "field", "name", "value", "position"]
     )
     assert_frame_equal(df, df_exp)
@@ -363,7 +362,7 @@ def test_bulkref_empty_with_nonempty_field_smoketest(con):
 def test_bulkref_not_applicable_field(con):
     df = con.bulkref("CL1 Comdty", ["FUT_DLVRBLE_BNDS_ISINS"])
     df_exp = pd.DataFrame(
-        [["CL1 Comdty", "FUT_DLVRBLE_BNDS_ISINS", np.NaN, np.NaN, np.NaN]],
+        [["CL1 Comdty", "FUT_DLVRBLE_BNDS_ISINS", np.nan, np.nan, np.nan]],
         columns=["ticker", "field", "name", "value", "position"]
     )
     assert_frame_equal(df, df_exp)

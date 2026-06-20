@@ -551,10 +551,10 @@ class BCon(object):
                     # this is a slight hack but if a fieldData response
                     # does not have the element fld and this is not a bad
                     # field (which is checked above) then the assumption is
-                    # that this is a not applicable field, thus set NaN
+                    # that this is a not applicable field, thus set nan
                     # see https://github.com/matthewgilbert/pdblp/issues/13
                     if fld not in fieldData:
-                        datum = [ticker, fld, np.NaN]
+                        datum = [ticker, fld, np.nan]
                         datum.extend(corrId)
                         data.append(datum)
                     else:
@@ -664,7 +664,7 @@ class BCon(object):
                                 datum.extend(corrId)
                                 data.append(datum)
                     else:  # field is empty or NOT_APPLICABLE_TO_REF_DATA
-                        datum = [ticker, fld, np.NaN, np.NaN, np.NaN]
+                        datum = [ticker, fld, np.nan, np.nan, np.nan]
                         datum.extend(corrId)
                         data.append(datum)
         return data
