@@ -20,6 +20,12 @@ We add usage logging to monitor blpapi usage to prevent hitting daily or monthly
 
 ### Changes from upstream
 
+#### v0.1.8+pinnaclefork.6
+- Improved compatibility with modern Python data stack:
+  - Replaced deprecated `np.NaN` usage with `np.nan` for NumPy 2.0 compatibility
+  - Added `ifbbg` pytest marker and offline test support via `--offline`
+  - Simplified Bloomberg-dependent test execution in CI and local development
+
 #### v0.1.8+pinnaclefork.5
 - Improved dummy data realism and time series handling:
   - Added support for fundamental fields (SALES_REV_TURN, GROSS_PROFIT, EBIT, EBITDA)
